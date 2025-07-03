@@ -6,7 +6,7 @@ from pulsefire.clients import RiotAPIClient
 import asyncio
 
 def get_file_path_from_match_id(match_id: str) -> str:
-    return f"cache/match_{match_id}.json"
+    return f"cache/matches/match_{match_id}.json"
 
 
 def save_match(match: RiotAPISchema.LolMatchV5Match):
@@ -30,7 +30,7 @@ async def get_match_by_id(
     if cached_match is not None:
         return cached_match
     try:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.5) # Naïve form of rate-limiting
         match = await client.get_lol_match_v5_match(region="europe", id=match_id)
         save_match(match)
         return match
