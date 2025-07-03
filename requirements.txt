@@ -1,0 +1,2 @@
+aioitertools==0.12.0
+pulsefire==2.0.28
