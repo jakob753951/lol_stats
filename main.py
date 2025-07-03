@@ -1,0 +1,153 @@
+import asyncio
+from collections import defaultdict
+from dataclasses import dataclass
+import json
+import os
+import sys
+from typing import NamedTuple
+from pulsefire.clients import RiotAPIClient
+from pulsefire.schemas import RiotAPISchema
+from league_types import *
+import player_statistics
+from winrates import get_winrate_for_champ_in_role_in_tier
+import match_repository
+import champions_repository
+from aioitertools.itertools import takewhile
+
+def log_interactive(message: str):
+	if sys.stdin.isatty(): print(message)
+
+def log_cli(message: str):
+	if not sys.stdin.isatty(): print(message)
+
+async def get_summoner(client: RiotAPIClient, game_name: str, tag_line: str) -> RiotAPISchema.LolSummonerV4Summoner:
+	account = await client.get_account_v1_by_riot_id(region="europe", game_name=game_name, tag_line=tag_line)
+	summoner = await client.get_lol_summoner_v4_by_puuid(region="euw1", puuid=account["puuid"])
+	return summoner
+
+def get_profile_icon_url_by_id(profile_icon_id: int) -> str:
+	return f'https://ddragon.leagueoflegends.com/cdn/15.12.1/img/profileicon/{profile_icon_id}.png'
+
+def get_queue_rank_from_leagues(leagues: list[RiotAPISchema.LolLeagueV4LeagueFullEntry], queue: Queue):
+	for league in leagues:
+		if league["queueType"] == queue.value:
+			return (league["tier"], league["rank"])
+
+def get_match_gamemode(match: RiotAPISchema.LolMatchV5Match):
+	return Gamemode(match["info"]["gameMode"])
+
+def get_champ_and_role_and_win_from_match_and_puuid(match: RiotAPISchema.LolMatchV5Match, puuid: str):
+	participant_index = match["metadata"]["participants"].index(puuid)
+	participant = match["info"]["participants"][participant_index]
+	team = next(team for team in match['info']['teams'] if team['teamId'] == participant['teamId'])
+	champ = participant["championName"]
+	team_position = participant["teamPosition"]
+	role = TeamPosition(team_position)
+	did_win = team["win"]
+	return champ, role, did_win
+
+def match_was_remake(match: RiotAPISchema.LolMatchV5Match):
+	return match['info']['participants'][0]['gameEndedInEarlySurrender']
+
+
+async def match_generator(client: RiotAPIClient, puuid: str):
+	recent_match_ids = []
+	for i in range(0, 1000, 100):
+		page_match_ids = await client.get_lol_match_v5_match_ids_by_puuid(region="europe", puuid=puuid, queries={'start': i, 'count': 100})
+		recent_match_ids.extend(page_match_ids)
+
+	for i, match_id in enumerate(recent_match_ids):
+		log_interactive(f'getting match #{i+1}: {match_id}')
+		match = await match_repository.get_match_by_id(client, match_id)
+		if match is None:
+			continue
+		yield match
+
+
+def get_match_game_version(match: RiotAPISchema.LolMatchV5Match) -> GameVersion:
+	parts = [int(part) for part in match['info']['gameVersion'].split('.')]
+	return GameVersion(*parts)
+
+
+@dataclass
+class ChampionStat:
+	wins: int
+	games: int
+
+@dataclass(frozen=True)
+class ChampRoleStat:
+	user: str
+	wins: int
+	games: int
+	champ_id: str
+	champ_name: str
+	role: TeamPosition
+	tier: str
+	def __str__(self) -> str:
+		return f'{self.champ_name} {self.role.name}: {self.wins}/{self.games} = {self.get_player_winrate():.02f}% p-value: {self.get_p_value():.02f}%'
+
+	def to_json(self) -> str:
+		return json.dumps(self.to_output_dict())
+	
+	def to_output_dict(self) -> dict:
+		return {
+			'name': self.champ_name,
+			'role': self.role.name,
+			'wins': self.wins,
+			'games': self.games,
+			'player_winrate': f'{self.get_player_winrate() * 100:6.02f}%',
+			f'global_winrate_in_{self.tier.lower()}': f'{self.get_global_winrate() * 100:6.02f}%',
+			'p-value': self.get_p_value(),
+		}
+
+	def get_p_value(self) -> float:
+		return player_statistics.get_p_value(self.games, self.wins, self.get_global_winrate())
+
+	def get_global_winrate(self) -> float:
+		return get_winrate_for_champ_in_role_in_tier(self.champ_id, self.role, self.tier)
+	
+	def get_player_winrate(self) -> float:
+		return self.wins/self.games
+
+api_key = os.environ['RIOT_API_KEY']
+async def main():
+	user_name = input('Enter Riot ID: ') if sys.stdin.isatty() else input()
+	async with RiotAPIClient(default_headers={"X-Riot-Token": api_key}) as client:
+		champ_role_stats = await stats_by_champ_and_role_for_user(client, user_name)
+	champ_role_stats.sort(key=lambda champ: champ.get_p_value())
+	log_cli(json.dumps([champ_role_stat.to_output_dict() for champ_role_stat in champ_role_stats]))
+	log_interactive('\n'.join(str(champ_role_stat) for champ_role_stat in champ_role_stats))
+
+
+async def stats_by_champ_and_role_for_user(client: RiotAPIClient, user_name: str) -> list[ChampRoleStat]:
+	(game_name, tag_line) = RiotId.from_str(user_name)
+	account = await client.get_account_v1_by_riot_id(region="europe", game_name=game_name, tag_line=tag_line)
+	puuid = account["puuid"]
+	leagues = await client.get_lol_league_v4_entries_by_puuid(region="euw1", puuid=puuid)
+	(tier, rank) = get_queue_rank_from_leagues(leagues, Queue.Solo) or ('Unranked', 'Unranked')
+	
+	current_version = GameVersion(15, 13, 693, 4876)
+	
+	matches = match_generator(client, puuid)
+	matches = takewhile(
+		lambda match: GameVersion.major_equal(get_match_game_version(match), current_version),
+		matches
+	)
+	# log_interactive(f'found {len([match async for match in matches if get_match_gamemode(match) == Gamemode.Classic and not match_was_remake(match)])} games from season {current_version.major}')
+	champion_stats: defaultdict[str, defaultdict[TeamPosition, ChampionStat]] = defaultdict(lambda: defaultdict(lambda: ChampionStat(0, 0)))
+	async for match in matches:
+		if match_was_remake(match): continue
+		if get_match_gamemode(match) != Gamemode.Classic: continue
+		champ, role, did_win = get_champ_and_role_and_win_from_match_and_puuid(match, puuid)
+		champion_stats[champ][role].games += 1
+		if did_win:
+			champion_stats[champ][role].wins += 1
+	
+	champ_role_stats: list[ChampRoleStat] = []
+	for champ, roles in champion_stats.items():
+		champ_name = champions_repository.get_champion_name(champ)
+		for role, stat in roles.items():
+			champ_role_stats.append(ChampRoleStat(user_name, stat.wins, stat.games, champ, champ_name, role, tier))
+	return champ_role_stats
+
+asyncio.run(main())

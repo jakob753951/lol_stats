@@ -1,0 +1,5 @@
+/cache/
+/.venv/
+/.vscode/
+/data_import/*.js*
+/__pycache__/
