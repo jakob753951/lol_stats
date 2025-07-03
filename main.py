@@ -4,7 +4,6 @@ from dataclasses import dataclass
 import json
 import os
 import sys
-from typing import NamedTuple
 from pulsefire.clients import RiotAPIClient
 from pulsefire.schemas import RiotAPISchema
 from league_types import *
@@ -13,6 +12,7 @@ from winrates import get_winrate_for_champ_in_role_in_tier
 import match_repository
 import champions_repository
 from aioitertools.itertools import takewhile
+from match_extensions import *
 
 def log_interactive(message: str):
 	if sys.stdin.isatty(): print(message)
@@ -33,22 +33,6 @@ def get_queue_rank_from_leagues(leagues: list[RiotAPISchema.LolLeagueV4LeagueFul
 		if league["queueType"] == queue.value:
 			return (league["tier"], league["rank"])
 
-def get_match_gamemode(match: RiotAPISchema.LolMatchV5Match):
-	return Gamemode(match["info"]["gameMode"])
-
-def get_champ_and_role_and_win_from_match_and_puuid(match: RiotAPISchema.LolMatchV5Match, puuid: str):
-	participant_index = match["metadata"]["participants"].index(puuid)
-	participant = match["info"]["participants"][participant_index]
-	team = next(team for team in match['info']['teams'] if team['teamId'] == participant['teamId'])
-	champ = participant["championName"]
-	team_position = participant["teamPosition"]
-	role = TeamPosition(team_position)
-	did_win = team["win"]
-	return champ, role, did_win
-
-def match_was_remake(match: RiotAPISchema.LolMatchV5Match):
-	return match['info']['participants'][0]['gameEndedInEarlySurrender']
-
 
 async def match_generator(client: RiotAPIClient, puuid: str):
 	recent_match_ids = []
@@ -62,12 +46,6 @@ async def match_generator(client: RiotAPIClient, puuid: str):
 		if match is None:
 			continue
 		yield match
-
-
-def get_match_game_version(match: RiotAPISchema.LolMatchV5Match) -> GameVersion:
-	parts = [int(part) for part in match['info']['gameVersion'].split('.')]
-	return GameVersion(*parts)
-
 
 @dataclass
 class ChampionStat:
@@ -105,7 +83,7 @@ class ChampRoleStat:
 
 	def get_global_winrate(self) -> float:
 		return get_winrate_for_champ_in_role_in_tier(self.champ_id, self.role, self.tier)
-	
+
 	def get_player_winrate(self) -> float:
 		return self.wins/self.games
 
