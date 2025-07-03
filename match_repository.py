@@ -5,12 +5,16 @@ from pulsefire.schemas import RiotAPISchema
 from pulsefire.clients import RiotAPIClient
 import asyncio
 
+
+matches_cache_path = 'cache/matches'
 def get_file_path_from_match_id(match_id: str) -> str:
-    return f"cache/matches/match_{match_id}.json"
+    return f"{matches_cache_path}/{match_id}.json"
 
 
 def save_match(match: RiotAPISchema.LolMatchV5Match):
     file_path = get_file_path_from_match_id(match["metadata"]["matchId"])
+    if not os.path.exists(matches_cache_path):
+        os.makedirs(matches_cache_path)
     with open(file_path, "w") as f:
         json.dump(match, f)
 

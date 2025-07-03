@@ -1,2 +1,3 @@
 aioitertools==0.12.0
 pulsefire==2.0.28
+requests==2.32.4
