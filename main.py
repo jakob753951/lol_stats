@@ -138,16 +138,17 @@ async def stats_by_champ_and_role_for_user(client: RiotAPIClient, user_name: str
 	async for match in matches:
 		if match_was_remake(match): continue
 		if get_match_gamemode(match) != Gamemode.Classic: continue
-		champ, role, did_win = get_champ_and_role_and_win_from_match_and_puuid(match, puuid)
-		champion_stats[champ][role].games += 1
+		champ_id, role, did_win = get_champ_and_role_and_win_from_match_and_puuid(match, puuid)
+		champion_stats[champ_id][role].games += 1
 		if did_win:
-			champion_stats[champ][role].wins += 1
+			champion_stats[champ_id][role].wins += 1
 	
 	champ_role_stats: list[ChampRoleStat] = []
-	for champ, roles in champion_stats.items():
-		champ_name = champions_repository.get_champion_name(champ)
+	for champ_id, roles in champion_stats.items():
+		champ_name = champions_repository.get_champion_name(champ_id)
+		if champ_name is None: champ_name = champ_id
 		for role, stat in roles.items():
-			champ_role_stats.append(ChampRoleStat(user_name, stat.wins, stat.games, champ, champ_name, role, tier))
+			champ_role_stats.append(ChampRoleStat(user_name, stat.wins, stat.games, champ_id, champ_name, role, tier))
 	return champ_role_stats
 
 asyncio.run(main())
