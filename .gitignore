@@ -3,3 +3,4 @@
 /.vscode/
 /data_import/*.js*
 /__pycache__/
+/players.json
