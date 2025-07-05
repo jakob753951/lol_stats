@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import json
 import os
 import sys
+from typing import AsyncIterator
 from pulsefire.clients import RiotAPIClient
 from pulsefire.schemas import RiotAPISchema
 from league_types import *
@@ -14,11 +15,14 @@ import champions_repository
 from aioitertools.itertools import takewhile
 from match_extensions import *
 
-def log_interactive(message: str):
-	if sys.stdin.isatty(): print(message)
+INTERACTIVE = sys.stdin.isatty()
+INTERACTIVE = False
+
+def log_interactive(message: str = ''):
+	if INTERACTIVE: print(message)
 
 def log_cli(message: str):
-	if not sys.stdin.isatty(): print(message)
+	if not INTERACTIVE: print(message)
 
 async def get_summoner(client: RiotAPIClient, game_name: str, tag_line: str) -> RiotAPISchema.LolSummonerV4Summoner:
 	account = await client.get_account_v1_by_riot_id(region="europe", game_name=game_name, tag_line=tag_line)
@@ -33,6 +37,9 @@ def get_queue_rank_from_leagues(leagues: list[RiotAPISchema.LolLeagueV4LeagueFul
 		if league["queueType"] == queue.value:
 			return (league["tier"], league["rank"])
 
+async def aiter[T](arr: list[T]) -> AsyncIterator[T]:
+	for val in arr:
+		yield val
 
 async def match_generator(client: RiotAPIClient, puuid: str):
 	recent_match_ids = []
@@ -87,14 +94,33 @@ class ChampRoleStat:
 	def get_player_winrate(self) -> float:
 		return self.wins/self.games
 
+
 api_key = os.environ['RIOT_API_KEY']
 async def main():
-	user_name = input('Enter Riot ID: ') if sys.stdin.isatty() else input()
+	if INTERACTIVE:
+		players = []
+		while True:
+			user_input = input('Enter Riot ID or empty to stop: ')
+			if user_input == '' or user_input.isspace():
+				break
+			players.append(user_input)
+	else:
+		with open('players.json', encoding='UTF-8') as f:
+			players = json.load(f)
+		
+	# players = ['xferm', 'jakob moeller', 'sarcasm chief#lau', 'rostbøll', 'nuggy', 'hexactly', 'shadowmik#7153', 'admiral adc', 'flx thurcaye', 'brk#42069']
 	async with RiotAPIClient(default_headers={"X-Riot-Token": api_key}) as client:
-		champ_role_stats = await stats_by_champ_and_role_for_user(client, user_name)
-	champ_role_stats.sort(key=lambda champ: champ.get_p_value())
-	log_cli(json.dumps([champ_role_stat.to_output_dict() for champ_role_stat in champ_role_stats]))
-	log_interactive('\n'.join(str(champ_role_stat) for champ_role_stat in champ_role_stats))
+		player_champ_role_stats: dict[str, list[ChampRoleStat]] = {}
+		for player in players:
+			player_champ_role_stats[player] = await stats_by_champ_and_role_for_user(client, player)
+		
+	log_cli(json.dumps({player: [champ_role_stat.to_output_dict() for champ_role_stat in champ_role_stats] for player, champ_role_stats in player_champ_role_stats.items()}))
+	if INTERACTIVE:
+		for player, champ_role_stats in player_champ_role_stats.items():
+			champ_role_stats.sort(key=lambda champ: champ.get_p_value())
+			log_interactive()
+			log_interactive(f'Player "{player}":')
+			log_interactive('\n'.join(str(champ_role_stat) for champ_role_stat in champ_role_stats))
 
 
 async def stats_by_champ_and_role_for_user(client: RiotAPIClient, user_name: str) -> list[ChampRoleStat]:
