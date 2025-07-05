@@ -1,6 +1,6 @@
 from math import comb
 
-def P(k, n, p):
+def P(k: int, n: int, p: float) -> float:
 	return comb(n, k) * p**k * (1-p)**(n-k)
 
 def get_p_value(games_played_on_champion: int, games_won_on_champion: int, champion_winrate: float) -> float:

@@ -3,8 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 import json
 import os
-import sys
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 from pulsefire.clients import RiotAPIClient
 from pulsefire.schemas import RiotAPISchema
 from league_types import *
@@ -15,7 +14,7 @@ import champions_repository
 from aioitertools.itertools import takewhile
 from match_extensions import *
 
-INTERACTIVE = sys.stdin.isatty()
+# INTERACTIVE = sys.stdin.isatty()
 INTERACTIVE = False
 
 def log_interactive(message: str = ''):
@@ -42,9 +41,9 @@ async def aiter[T](arr: list[T]) -> AsyncIterator[T]:
 		yield val
 
 async def match_generator(client: RiotAPIClient, puuid: str):
-	recent_match_ids = []
+	recent_match_ids: list[str] = []
 	for i in range(0, 1000, 100):
-		page_match_ids = await client.get_lol_match_v5_match_ids_by_puuid(region="europe", puuid=puuid, queries={'start': i, 'count': 100})
+		page_match_ids: list[str] = await client.get_lol_match_v5_match_ids_by_puuid(region="europe", puuid=puuid, queries={'start': i, 'count': 100})
 		recent_match_ids.extend(page_match_ids)
 
 	for i, match_id in enumerate(recent_match_ids):
@@ -74,7 +73,7 @@ class ChampRoleStat:
 	def to_json(self) -> str:
 		return json.dumps(self.to_output_dict())
 	
-	def to_output_dict(self) -> dict:
+	def to_output_dict(self) -> dict[str, Any]:
 		return {
 			'name': self.champ_name,
 			'role': self.role.name,
@@ -98,7 +97,7 @@ class ChampRoleStat:
 api_key = os.environ['RIOT_API_KEY']
 async def main():
 	if INTERACTIVE:
-		players = []
+		players: list[str] = []
 		while True:
 			user_input = input('Enter Riot ID or empty to stop: ')
 			if user_input == '' or user_input.isspace():
@@ -128,7 +127,7 @@ async def stats_by_champ_and_role_for_user(client: RiotAPIClient, user_name: str
 	account = await client.get_account_v1_by_riot_id(region="europe", game_name=game_name, tag_line=tag_line)
 	puuid = account["puuid"]
 	leagues = await client.get_lol_league_v4_entries_by_puuid(region="euw1", puuid=puuid)
-	(tier, rank) = get_queue_rank_from_leagues(leagues, Queue.Solo) or ('Unranked', 'Unranked')
+	(tier, _) = get_queue_rank_from_leagues(leagues, Queue.Solo) or ('Unranked', 'Unranked')
 	
 	current_version = GameVersion(15, 13, 693, 4876)
 	

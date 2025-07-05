@@ -1,6 +1,7 @@
 from functools import cache
 import json
 import os
+from typing import Any
 import requests
 
 
@@ -8,7 +9,7 @@ champions_folder_path = 'cache/static_data'
 champions_file_path = f'{champions_folder_path}/champions.json'
 champions_api_url = 'https://ddragon.leagueoflegends.com/cdn/15.13.1/data/en_US/champion.json'
 
-def get_champions() -> dict:
+def get_champions() -> dict[str, dict[str, Any]]:
 	if os.path.exists(champions_file_path):
 		with open(champions_file_path, encoding='utf-8') as f:
 			return json.load(f)
@@ -25,7 +26,7 @@ def get_champions() -> dict:
 	
 
 @cache
-def get_champion(champ_id: str) -> dict | None:
+def get_champion(champ_id: str) -> dict[str, Any] | None:
 	champs_data = get_champions()
 
 	# When getting Fiddlesticks from a game, he'll be called FiddleSticks. Don't ask me why
