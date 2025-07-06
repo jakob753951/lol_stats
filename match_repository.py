@@ -34,7 +34,10 @@ async def get_match_by_id(
     if cached_match is not None:
         return cached_match
     try:
-        await asyncio.sleep(0.5) # Naïve form of rate-limiting
+        # Naïve form of rate-limiting
+        # According to Riot, we can send 100 requests every 2 minutes
+        # Source: https://developer.riotgames.com/docs/portal
+        await asyncio.sleep(120/100)
         match = await client.get_lol_match_v5_match(region="europe", id=match_id)
         save_match(match)
         return match

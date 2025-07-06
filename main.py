@@ -44,6 +44,10 @@ async def match_generator(client: RiotAPIClient, puuid: str):
 	PAGE_SIZE = 100
 	i = 0
 	while True:
+        # Naïve form of rate-limiting
+        # According to Riot, we can send 100 requests every 2 minutes
+        # Source: https://developer.riotgames.com/docs/portal
+		await asyncio.sleep(120/100)
 		page_match_ids: list[str] = await client.get_lol_match_v5_match_ids_by_puuid(region="europe", puuid=puuid, queries={'start': i, 'count': PAGE_SIZE})
 		i += PAGE_SIZE
 		for match_id in page_match_ids:
