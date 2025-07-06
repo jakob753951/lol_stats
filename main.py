@@ -105,8 +105,7 @@ async def main():
 	else:
 		with open('players.json', encoding='UTF-8') as f:
 			players = json.load(f)
-		
-	# players = ['xferm', 'jakob moeller', 'sarcasm chief#lau', 'rostbøll', 'nuggy', 'hexactly', 'shadowmik#7153', 'admiral adc', 'flx thurcaye', 'brk#42069']
+
 	async with RiotAPIClient(default_headers={"X-Riot-Token": api_key}) as client:
 		player_champ_role_stats: dict[str, list[ChampRoleStat]] = {}
 		for player in players:
