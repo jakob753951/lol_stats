@@ -137,6 +137,7 @@ async def stats_by_champ_and_role_for_user(client: RiotAPIClient, user_name: str
 	champion_stats: defaultdict[str, defaultdict[TeamPosition, ChampionStat]] = defaultdict(lambda: defaultdict(lambda: ChampionStat(0, 0)))
 	i = 0
 	async for match in matches:
+		i += 1
 		log_debug(f'got match {i}: {match['metadata']["matchId"]}')
 		if match_was_remake(match): continue
 		if get_match_gamemode(match) != Gamemode.Classic: continue
@@ -144,7 +145,6 @@ async def stats_by_champ_and_role_for_user(client: RiotAPIClient, user_name: str
 		champion_stats[champ_id][role].games += 1
 		if did_win:
 			champion_stats[champ_id][role].wins += 1
-		i += 1
 	
 	champ_role_stats: list[ChampRoleStat] = []
 	for champ_id, roles in champion_stats.items():
