@@ -41,17 +41,16 @@ def get_queue_rank_from_leagues(leagues: list[RiotAPISchema.LolLeagueV4LeagueFul
 			return (league["tier"], league["rank"])
 
 async def match_generator(client: RiotAPIClient, puuid: str):
-	recent_match_ids: list[str] = []
-	for i in range(0, 1000, 100):
-		page_match_ids: list[str] = await client.get_lol_match_v5_match_ids_by_puuid(region="europe", puuid=puuid, queries={'start': i, 'count': 100})
-		recent_match_ids.extend(page_match_ids)
-
-	for i, match_id in enumerate(recent_match_ids):
-		log_interactive(f'getting match #{i+1}: {match_id}')
-		match = await match_repository.get_match_by_id(client, match_id)
-		if match is None:
-			continue
-		yield match
+	PAGE_SIZE = 100
+	i = 0
+	while True:
+		page_match_ids: list[str] = await client.get_lol_match_v5_match_ids_by_puuid(region="europe", puuid=puuid, queries={'start': i, 'count': PAGE_SIZE})
+		i += PAGE_SIZE
+		for match_id in page_match_ids:
+			match = await match_repository.get_match_by_id(client, match_id)
+			if match is None:
+				continue
+			yield match
 
 @dataclass
 class ChampionStat:
