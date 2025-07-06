@@ -134,7 +134,6 @@ async def stats_by_champ_and_role_for_user(client: RiotAPIClient, user_name: str
 		lambda match: GameVersion.major_equal(get_match_game_version(match), current_version),
 		matches
 	)
-	# log_interactive(f'found {len([match async for match in matches if get_match_gamemode(match) == Gamemode.Classic and not match_was_remake(match)])} games from season {current_version.major}')
 	champion_stats: defaultdict[str, defaultdict[TeamPosition, ChampionStat]] = defaultdict(lambda: defaultdict(lambda: ChampionStat(0, 0)))
 	i = 0
 	async for match in matches:
