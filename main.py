@@ -36,10 +36,6 @@ def get_queue_rank_from_leagues(leagues: list[RiotAPISchema.LolLeagueV4LeagueFul
 		if league["queueType"] == queue.value:
 			return (league["tier"], league["rank"])
 
-async def aiter[T](arr: list[T]) -> AsyncIterator[T]:
-	for val in arr:
-		yield val
-
 async def match_generator(client: RiotAPIClient, puuid: str):
 	recent_match_ids: list[str] = []
 	for i in range(0, 1000, 100):
