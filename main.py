@@ -40,22 +40,6 @@ def get_queue_rank_from_leagues(leagues: list[RiotAPISchema.LolLeagueV4LeagueFul
 		if league["queueType"] == queue.value:
 			return (league["tier"], league["rank"])
 
-async def match_generator(client: RiotAPIClient, puuid: str):
-	PAGE_SIZE = 100
-	i = 0
-	while True:
-        # Naïve form of rate-limiting
-        # According to Riot, we can send 100 requests every 2 minutes
-        # Source: https://developer.riotgames.com/docs/portal
-		await asyncio.sleep(120/100)
-		page_match_ids: list[str] = await client.get_lol_match_v5_match_ids_by_puuid(region="europe", puuid=puuid, queries={'start': i, 'count': PAGE_SIZE})
-		i += PAGE_SIZE
-		for match_id in page_match_ids:
-			match = await match_repository.get_match_by_id(client, match_id)
-			if match is None:
-				continue
-			yield match
-
 @dataclass
 class ChampionStat:
 	wins: int
@@ -96,6 +80,21 @@ class ChampRoleStat:
 	def get_player_winrate(self) -> float:
 		return self.wins/self.games
 
+async def match_generator(client: RiotAPIClient, puuid: str):
+	PAGE_SIZE = 100
+	i = 0
+	while True:
+        # Naïve form of rate-limiting
+        # According to Riot, we can send 100 requests every 2 minutes
+        # Source: https://developer.riotgames.com/docs/portal
+		await asyncio.sleep(120/100)
+		page_match_ids: list[str] = await client.get_lol_match_v5_match_ids_by_puuid(region="europe", puuid=puuid, queries={'start': i, 'count': PAGE_SIZE})
+		i += PAGE_SIZE
+		for match_id in page_match_ids:
+			match = await match_repository.get_match_by_id(client, match_id)
+			if match is None:
+				continue
+			yield match
 
 api_key = os.environ['RIOT_API_KEY']
 async def main():
