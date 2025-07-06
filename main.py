@@ -24,7 +24,7 @@ def log_debug(message: str = ''):
 def log_interactive(message: str = ''):
 	if INTERACTIVE: print(message)
 
-def log_cli(message: str):
+def log_cli(message: str = ''):
 	if not INTERACTIVE: print(message)
 
 async def get_summoner(client: RiotAPIClient, game_name: str, tag_line: str) -> RiotAPISchema.LolSummonerV4Summoner:
