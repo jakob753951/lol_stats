@@ -16,6 +16,10 @@ from match_extensions import *
 
 # INTERACTIVE = sys.stdin.isatty()
 INTERACTIVE = False
+DEBUG = True
+
+def log_debug(message: str = ''):
+	if DEBUG: print(message)
 
 def log_interactive(message: str = ''):
 	if INTERACTIVE: print(message)
