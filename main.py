@@ -89,6 +89,8 @@ async def match_generator(client: RiotAPIClient, puuid: str):
         # Source: https://developer.riotgames.com/docs/portal
 		await asyncio.sleep(120/100)
 		page_match_ids: list[str] = await client.get_lol_match_v5_match_ids_by_puuid(region="europe", puuid=puuid, queries={'start': i, 'count': PAGE_SIZE})
+		if len(page_match_ids) == 0:
+			break
 		i += PAGE_SIZE
 		for match_id in page_match_ids:
 			match = await match_repository.get_match_by_id(client, match_id)
