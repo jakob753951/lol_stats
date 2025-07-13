@@ -16,7 +16,7 @@ from match_extensions import *
 
 # INTERACTIVE = sys.stdin.isatty()
 INTERACTIVE = False
-DEBUG = True
+DEBUG = False
 
 def log_debug(message: str = ''):
 	if DEBUG: print(message)
@@ -75,7 +75,7 @@ class ChampRoleStat:
 		return player_statistics.get_p_value(self.games, self.wins, self.get_global_winrate())
 
 	def get_global_winrate(self) -> float:
-		return get_winrate_for_champ_in_role_in_tier(self.champ_id, self.role, self.tier)
+		return get_winrate_for_champ_in_role_in_tier(self.champ_id, self.role, self.tier) or 0.5
 
 	def get_player_winrate(self) -> float:
 		return self.wins/self.games
