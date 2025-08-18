@@ -4,3 +4,4 @@
 /data_import/*.js*
 /__pycache__/
 /players.json
+.pytest_cache
