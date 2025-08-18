@@ -55,7 +55,7 @@ class ChampRoleStat:
 	role: TeamPosition
 	tier: str
 	def __str__(self) -> str:
-		return f'{self.champ_name} {self.role.name}: {self.wins}/{self.games} = {self.get_player_winrate():.02f}% p-value: {self.get_p_value():.02f}%'
+		return f'{self.champ_name} {self.role.name}: {self.wins}/{self.games} = {self.get_player_winrate()*100:.0f}% p-value: {self.get_p_value()*100:.0f}%'
 
 	def to_json(self) -> str:
 		return json.dumps(self.to_output_dict())
