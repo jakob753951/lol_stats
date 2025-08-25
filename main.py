@@ -15,8 +15,8 @@ from aioitertools.itertools import takewhile
 from match_extensions import *
 
 # INTERACTIVE = sys.stdin.isatty()
-INTERACTIVE = False
-DEBUG = False
+INTERACTIVE = (os.environ.get('INTERACTIVE') or 'Y') == 'Y'
+DEBUG = (os.environ.get('DEBUG') or 'Y') == 'Y'
 
 def log_debug(message: str = ''):
 	if DEBUG: print(message)
