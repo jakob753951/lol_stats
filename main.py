@@ -62,13 +62,14 @@ class ChampRoleStat:
 	
 	def to_output_dict(self) -> dict[str, Any]:
 		return {
+			'player': self.user,
 			'name': self.champ_name,
 			'role': self.role.name,
 			'wins': self.wins,
 			'games': self.games,
-			'player_winrate': f'{self.get_player_winrate() * 100:6.02f}%',
-			f'global_winrate_in_{self.tier.lower()}': f'{self.get_global_winrate() * 100:6.02f}%',
-			'p-value': self.get_p_value(),
+			'player_winrate': self.get_player_winrate(),
+			'p-value': 1-self.get_p_value(),
+			f'winrate_for_rank': self.get_global_winrate(),
 		}
 
 	def get_p_value(self) -> float:
@@ -115,8 +116,19 @@ async def main():
 		player_champ_role_stats: dict[str, list[ChampRoleStat]] = {}
 		for player in players:
 			player_champ_role_stats[player] = await stats_by_champ_and_role_for_user(client, player)
+	
+	all_stats: list[ChampRoleStat] = []
+	for player, champ_role_stats in player_champ_role_stats.items():
+		for champ_role_stat in champ_role_stats:
+			# if champ_role_stat.games >= 5:
+			all_stats.append(champ_role_stat)
+	all_stats.sort(key=lambda stat: stat.get_player_winrate())
+	
+	with open('cache/recent_result.json', 'w', encoding='UTF-8') as f:
+		json.dump([stat.to_output_dict() for stat in all_stats], f, indent=4)
 		
-	log_cli(json.dumps({player: [champ_role_stat.to_output_dict() for champ_role_stat in champ_role_stats] for player, champ_role_stats in player_champ_role_stats.items()}))
+	log_cli(json.dumps([stat.to_output_dict() for stat in all_stats]))
+	
 	if INTERACTIVE:
 		for player, champ_role_stats in player_champ_role_stats.items():
 			champ_role_stats.sort(key=lambda champ: champ.get_p_value())
@@ -143,7 +155,7 @@ async def stats_by_champ_and_role_for_user(client: RiotAPIClient, user_name: str
 	i = 0
 	async for match in matches:
 		i += 1
-		log_debug(f'got match {i}: {match['metadata']["matchId"]}')
+		log_debug(f'got match {i} for {user_name}: {match['metadata']["matchId"]}')
 		if match_was_remake(match): continue
 		if get_match_gamemode(match) != Gamemode.Classic: continue
 		champ_id, role, did_win = get_champ_and_role_and_win_from_match_and_puuid(match, puuid)
@@ -156,7 +168,7 @@ async def stats_by_champ_and_role_for_user(client: RiotAPIClient, user_name: str
 		champ_name = champions_repository.get_champion_name(champ_id)
 		if champ_name is None: champ_name = champ_id
 		for role, stat in roles.items():
-			champ_role_stats.append(ChampRoleStat(user_name, stat.wins, stat.games, champ_id, champ_name, role, tier))
+			champ_role_stats.append(ChampRoleStat(f'{game_name}#{tag_line}', stat.wins, stat.games, champ_id, champ_name, role, tier))
 	return champ_role_stats
 
 asyncio.run(main())
