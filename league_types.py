@@ -8,6 +8,7 @@ class Gamemode(Enum):
 	Swiftplay = 'SWIFTPLAY'
 	Aram = 'ARAM'
 	Urf = 'URF'
+	PracticeTool = 'PRACTICETOOL'
 
 class TeamPosition(Enum):
 	Top = 'TOP'
