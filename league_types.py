@@ -27,6 +27,10 @@ class Queue:
 	map: str
 	description: str
 	notes: str
+	
+	@staticmethod
+	def from_dict(d: dict) -> 'Queue':
+		return Queue(d['queueId'], d['map'], d['description'], d['notes'])
 
 class RiotId(NamedTuple):
 	game_name: str
