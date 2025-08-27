@@ -16,10 +16,17 @@ class TeamPosition(Enum):
 	Marksman = 'BOTTOM'
 	Support = 'UTILITY'
 
-class Queue(Enum):
+class QueueType(Enum):
 	Solo = 'RANKED_SOLO_5x5'
 	Flex = 'RANKED_FLEX_5x5'
-	
+
+@dataclass
+class Queue:
+	queueId: int
+	map: str
+	description: str
+	notes: str
+
 class RiotId(NamedTuple):
 	game_name: str
 	tag_line: str

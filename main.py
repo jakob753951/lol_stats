@@ -35,9 +35,9 @@ async def get_summoner(client: RiotAPIClient, game_name: str, tag_line: str) -> 
 def get_profile_icon_url_by_id(profile_icon_id: int) -> str:
 	return f'https://ddragon.leagueoflegends.com/cdn/15.12.1/img/profileicon/{profile_icon_id}.png'
 
-def get_queue_rank_from_leagues(leagues: list[RiotAPISchema.LolLeagueV4LeagueFullEntry], queue: Queue):
+def get_queue_rank_from_leagues(leagues: list[RiotAPISchema.LolLeagueV4LeagueFullEntry], queue_type: QueueType):
 	for league in leagues:
-		if league["queueType"] == queue.value:
+		if league["queueType"] == queue_type.value:
 			return (league["tier"], league["rank"])
 
 @dataclass
@@ -142,7 +142,7 @@ async def stats_by_champ_and_role_for_user(client: RiotAPIClient, user_name: str
 	account = await client.get_account_v1_by_riot_id(region="europe", game_name=game_name, tag_line=tag_line)
 	puuid = account["puuid"]
 	leagues = await client.get_lol_league_v4_entries_by_puuid(region="euw1", puuid=puuid)
-	(tier, _) = get_queue_rank_from_leagues(leagues, Queue.Solo) or ('Unranked', 'Unranked')
+	(tier, _) = get_queue_rank_from_leagues(leagues, QueueType.Solo) or ('Unranked', 'Unranked')
 	
 	current_version = GameVersion(15, 13, 693, 4876)
 	
